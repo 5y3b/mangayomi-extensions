@@ -1,5 +1,264 @@
 import 'package:mangayomi/bridge_lib.dart';
 import 'dart:convert';
+import 'package:html/dom.dart';
+
+class TranslateAPI {
+  static final textLengthMax = 6000;
+  static final Map<String, Map<String, String>> languageCodeMap = {
+    "AA": {"en": "Afar", "native": "Afaraf"},
+    "AB": {"en": "Abkhazian", "native": "Аԥсуа"},
+    "AE": {"en": "Avestan", "native": "𐬀𐬎𐬯𐬙𐬀𐬥"},
+    "AF": {"en": "Afrikaans", "native": "Afrikaans"},
+    "AK": {"en": "Akan", "native": "Akan"},
+    "AM": {"en": "Amharic", "native": "አማርኛ"},
+    "AN": {"en": "Aragonese", "native": "Aragonés"},
+    "AR": {"en": "Arabic", "native": "العربية"},
+    "AS": {"en": "Assamese", "native": "অসমীয়া"},
+    "AV": {"en": "Avaric", "native": "Авар мацӀ"},
+    "AY": {"en": "Aymara", "native": "Aymar aru"},
+    "AZ": {"en": "Azerbaijani", "native": "Azərbaycan dili"},
+
+    "BA": {"en": "Bashkir", "native": "Башҡорт теле"},
+    "BE": {"en": "Belarusian", "native": "Беларуская"},
+    "BG": {"en": "Bulgarian", "native": "Български"},
+    "BI": {"en": "Bislama", "native": "Bislama"},
+    "BM": {"en": "Bambara", "native": "Bamanankan"},
+    "BN": {"en": "Bengali", "native": "বাংলা"},
+    "BO": {"en": "Tibetan", "native": "བོད་ཡིག"},
+    "BR": {"en": "Breton", "native": "Brezhoneg"},
+    "BS": {"en": "Bosnian", "native": "Bosanski"},
+
+    "CA": {"en": "Catalan", "native": "Català"},
+    "CE": {"en": "Chechen", "native": "Нохчийн мотт"},
+    "CH": {"en": "Chamorro", "native": "Chamoru"},
+    "CO": {"en": "Corsican", "native": "Corsu"},
+    "CR": {"en": "Cree", "native": "ᓀᐦᐃᔭᐍᐏᐣ"},
+    "CS": {"en": "Czech", "native": "Čeština"},
+    "CU": {"en": "Church Slavic", "native": "ѩзыкъ словѣньскъ"},
+    "CV": {"en": "Chuvash", "native": "Чӑваш чӗлхи"},
+    "CY": {"en": "Welsh", "native": "Cymraeg"},
+
+    "DA": {"en": "Danish", "native": "Dansk"},
+    "DE": {"en": "German", "native": "Deutsch"},
+    "DV": {"en": "Dhivehi", "native": "ދިވެހި"},
+    "DZ": {"en": "Dzongkha", "native": "རྫོང་ཁ"},
+
+    "EE": {"en": "Ewe", "native": "Eʋegbe"},
+    "EL": {"en": "Greek", "native": "Ελληνικά"},
+    "EN": {"en": "English", "native": "English"},
+    "EO": {"en": "Esperanto", "native": "Esperanto"},
+    "ES": {"en": "Spanish", "native": "Español"},
+    "ET": {"en": "Estonian", "native": "Eesti"},
+    "EU": {"en": "Basque", "native": "Euskara"},
+
+    "FA": {"en": "Persian", "native": "فارسی"},
+    "FF": {"en": "Fulah", "native": "Fulfulde"},
+    "FI": {"en": "Finnish", "native": "Suomi"},
+    "FJ": {"en": "Fijian", "native": "Na Vosa Vakaviti"},
+    "FO": {"en": "Faroese", "native": "Føroyskt"},
+    "FR": {"en": "French", "native": "Français"},
+    "FY": {"en": "Western Frisian", "native": "Frysk"},
+
+    "GA": {"en": "Irish", "native": "Gaeilge"},
+    "GD": {"en": "Scottish Gaelic", "native": "Gàidhlig"},
+    "GL": {"en": "Galician", "native": "Galego"},
+    "GN": {"en": "Guarani", "native": "Avañe'ẽ"},
+    "GU": {"en": "Gujarati", "native": "ગુજરાતી"},
+    "GV": {"en": "Manx", "native": "Gaelg"},
+
+    "HA": {"en": "Hausa", "native": "Hausa"},
+    "HE": {"en": "Hebrew", "native": "עברית"},
+    "HI": {"en": "Hindi", "native": "हिन्दी"},
+    "HO": {"en": "Hiri Motu", "native": "Hiri Motu"},
+    "HR": {"en": "Croatian", "native": "Hrvatski"},
+    "HT": {"en": "Haitian", "native": "Kreyòl ayisyen"},
+    "HU": {"en": "Hungarian", "native": "Magyar"},
+    "HY": {"en": "Armenian", "native": "Հայերեն"},
+
+    "ID": {"en": "Indonesian", "native": "Bahasa Indonesia"},
+    "IG": {"en": "Igbo", "native": "Igbo"},
+    "IS": {"en": "Icelandic", "native": "Íslenska"},
+    "IT": {"en": "Italian", "native": "Italiano"},
+
+    "JA": {"en": "Japanese", "native": "日本語"},
+    "JV": {"en": "Javanese", "native": "Basa Jawa"},
+
+    "KA": {"en": "Georgian", "native": "ქართული"},
+    "KK": {"en": "Kazakh", "native": "Қазақ тілі"},
+    "KM": {"en": "Khmer", "native": "ខ្មែរ"},
+    "KN": {"en": "Kannada", "native": "ಕನ್ನಡ"},
+    "KO": {"en": "Korean", "native": "한국어"},
+    "KU": {"en": "Kurdish", "native": "Kurdî"},
+
+    "LA": {"en": "Latin", "native": "Latina"},
+    "LB": {"en": "Luxembourgish", "native": "Lëtzebuergesch"},
+    "LO": {"en": "Lao", "native": "ລາວ"},
+    "LT": {"en": "Lithuanian", "native": "Lietuvių"},
+    "LV": {"en": "Latvian", "native": "Latviešu"},
+
+    "MG": {"en": "Malagasy", "native": "Malagasy"},
+  };
+  static final Client client = Client();
+  static Future<String> translate(
+    String text, [
+    String targetLang = 'en',
+    String sourceLang = 'en',
+  ]) async {
+    if (sourceLang == targetLang) return text;
+    if (!languageCodeMap.containsKey(sourceLang.toUpperCase()))
+      throw Exception('Unsupported language code $sourceLang');
+    if (!languageCodeMap.containsKey(targetLang.toUpperCase()))
+      throw Exception('Unsupported language code $targetLang');
+    if (text.length > textLengthMax)
+      throw Exception('Text too long to translate (max 2000 chars)');
+    final url =
+        'https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=$sourceLang&tl=$targetLang&q=${Uri.encodeComponent(text)}';
+    final response = await client.get(
+      Uri.parse(url),
+      headers: {
+        "user-agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36",
+      },
+    );
+
+    if (response.statusCode == 200) {
+      List<dynamic> chunks = jsonDecode(response.body)?[0] ?? [];
+      String original = "";
+      String translated = "";
+      for (dynamic chunk in chunks) {
+        if (chunk != null && chunk is List && chunk.length >= 2) {
+          translated += chunk[0] ?? "";
+          original += chunk[1] ?? "";
+        }
+      }
+      if (translated.isEmpty)
+        throw Exception(
+          'Unexpected response format from translation API, REPORT TO DISCORD WITH THIS ERROR MESSAGE: ${response.body}',
+        );
+      print(translated);
+      return translated;
+    } else {
+      throw Exception(
+        'Failed to translate text: ${response.statusCode}\n ${url}',
+      );
+    }
+  }
+
+  static Future<String> translateLong(
+    String text, [
+    String targetLang = 'en',
+    String sourceLang = 'en',
+  ]) async {
+    if (text.length < textLengthMax) {
+      return await translate(text, targetLang, sourceLang);
+    }
+    List<String> dd = [];
+    List<String> parts = Utils.smartSplit(text, textLengthMax);
+
+    for (String part in parts) {
+      String translated = await translate(part, targetLang, sourceLang);
+      dd.add(translated);
+    }
+
+    return dd.join("");
+  }
+
+  static Future<String> translateHtml(
+    String html,
+    String targetLang,
+    String sourceLang,
+  ) async {
+    // remove dumb stuff
+    String brPlaceholder = "-!!-!!-";
+    String emPlaceholderOpen = "-!-!-!-";
+    String emPlaceholderClose = "!-!-!-!";
+    html = html.replaceAll(RegExp("<br/?>"), brPlaceholder);
+    html = html.replaceAll(RegExp("<em>"), emPlaceholderOpen);
+    html = html.replaceAll(RegExp("</em>"), emPlaceholderClose);
+
+    html = html.replaceAll("&nbsp;", "");
+    html = html.replaceAll("&amp;", "&");
+    MDocument doc = parseHtml(html);
+    List<MElement> leafs = Utils.getLeafElements(doc.body!);
+    List<String> placeholders = [];
+    List<String> values = [];
+
+    // put placeholders
+    for (int i = 0; i < leafs.length; i++) {
+      String original = leafs[i].text ?? "";
+      String key = "__PLACEHOLDER_${i}__";
+      if (original.trim().isEmpty) continue;
+      placeholders.add(key);
+      values.add(original);
+      html = html.replaceFirst(original, key);
+    }
+
+    // translate
+    String sep = '!!!!!!!';
+    List<String> translatedValues = await translateLong(
+      values.join(sep),
+      targetLang,
+      sourceLang,
+    ).then((res) => res.split(sep));
+
+    // put back
+    if (placeholders.length != translatedValues.length) {
+      print('Warning: mismatch in placeholders and translations!');
+    }
+    for (
+      int i = 0;
+      i < placeholders.length && i < translatedValues.length;
+      i++
+    ) {
+      html = html.replaceFirst(placeholders[i], translatedValues[i]);
+    }
+    html = html.replaceAll(brPlaceholder, "<br>");
+    html = html.replaceAll(emPlaceholderOpen, "<em>");
+    html = html.replaceAll(emPlaceholderClose, "</em>");
+    print(html);
+    return html;
+  }
+}
+
+class Utils {
+  static List<MElement> getLeafElements(MElement root) {
+    List<MElement> result = [];
+
+    void dfs(MElement el) {
+      final children = el.children ?? [];
+
+      if (children.isEmpty ||
+          children.every((child) => child.text?.trim().isEmpty ?? true)) {
+        result.add(el);
+      } else {
+        for (var child in children) {
+          dfs(child);
+        }
+      }
+    }
+
+    dfs(root);
+    return result;
+  }
+
+  static List<String> smartSplit(String text, int i) {
+    List<String> parts = [];
+    int start = 0;
+    while (start < text.length) {
+      int end = start + i;
+      if (end >= text.length) {
+        parts.add(text.substring(start));
+        break;
+      }
+      int lastSpace = text.lastIndexOf(' ', end);
+      if (lastSpace <= start)
+        lastSpace = end; // no space found, split at max length
+      parts.add(text.substring(start, lastSpace));
+      start = lastSpace + 1; // skip the space
+    }
+    return parts;
+  }
+}
 
 class RoyalRoadSource extends MProvider {
   RoyalRoadSource({required this.source});
@@ -230,7 +489,14 @@ class RoyalRoadSource extends MProvider {
       RegExp(r"<table.*?>|</table>|<tr.*?>|</tr>|<td.*?>|</td>"),
       "",
     );
-    return " " + html; // idk for some reason the reader cuts first char
+    // return " " + html; // idk for some reason the reader cuts first char
+    String translatedHtml = "";
+    translatedHtml = await TranslateAPI.translateHtml(
+      html,
+      this.preferenceLanguage.toLowerCase(),
+      "en",
+    );
+    return " " + translatedHtml;
   }
 
   // For anime episode video list
@@ -392,8 +658,33 @@ class RoyalRoadSource extends MProvider {
 
   @override
   List<dynamic> getSourcePreferences() {
-    return [];
+    List<String> langEntries = ["Default (English)"];
+    List<String> langValues = ["en"];
+    final mapping = TranslateAPI.languageCodeMap..remove('EN');
+    mapping.forEach((key, value) {
+      langEntries.add("${value['en']} - (${value['native']})");
+    });
+    mapping.forEach((key, value) {
+      langValues.add(key.toLowerCase());
+    });
+    return [
+      ListPreference(
+        key: "language_preference",
+        title: "Language (experimental)",
+        summary:
+            "Select the language to translate novels to (experimental, may cause weird formatting issues or might not translate all)",
+        valueIndex: 0,
+        entries: langEntries,
+        entryValues: langValues,
+      ),
+    ];
   }
+
+  String get preferenceLanguage =>
+      (getPreferenceValue(this.source.id ?? 0, "language_preference")
+              as String?)
+          ?.toLowerCase() ??
+      "en";
 }
 
 RoyalRoadSource main(MSource source) {
