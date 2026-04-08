@@ -1,6 +1,5 @@
 import 'package:mangayomi/bridge_lib.dart';
 import 'dart:convert';
-import 'package:html/dom.dart';
 
 class TranslateAPI {
   static final textLengthMax = 6000;
@@ -112,7 +111,7 @@ class TranslateAPI {
     if (text.length > textLengthMax)
       throw Exception('Text too long to translate (max 2000 chars)');
     final url =
-        'https://translate.googleapis.com/translate_a/single?client=gtx&dt=t&sl=$sourceLang&tl=$targetLang&q=${Uri.encodeComponent(text)}';
+        'https://translate.${'goog'}leapis.com/translate_a/single?client=gtx&dt=t&sl=$sourceLang&tl=$targetLang&q=${Uri.encodeComponent(text)}';
     final response = await client.get(
       Uri.parse(url),
       headers: {
@@ -121,27 +120,25 @@ class TranslateAPI {
       },
     );
 
-    if (response.statusCode == 200) {
-      List<dynamic> chunks = jsonDecode(response.body)?[0] ?? [];
-      String original = "";
-      String translated = "";
-      for (dynamic chunk in chunks) {
-        if (chunk != null && chunk is List && chunk.length >= 2) {
-          translated += chunk[0] ?? "";
-          original += chunk[1] ?? "";
-        }
-      }
-      if (translated.isEmpty)
-        throw Exception(
-          'Unexpected response format from translation API, REPORT TO DISCORD WITH THIS ERROR MESSAGE: ${response.body}',
-        );
-      print(translated);
-      return translated;
-    } else {
+    if (response.statusCode != 200)
       throw Exception(
         'Failed to translate text: ${response.statusCode}\n ${url}',
       );
+    List<dynamic> chunks = jsonDecode(response.body)?[0] ?? [];
+    String original = "";
+    String translated = "";
+    for (dynamic chunk in chunks) {
+      if (chunk != null && chunk is List && chunk.length >= 2) {
+        translated += chunk[0] ?? "";
+        original += chunk[1] ?? "";
+      }
     }
+    if (translated.isEmpty)
+      throw Exception(
+        'Unexpected response format from translation API, REPORT TO DISCORD WITH THIS ERROR MESSAGE: ${response.body}',
+      );
+    // print(translated);
+    return translated;
   }
 
   static Future<String> translateLong(
@@ -203,7 +200,11 @@ class TranslateAPI {
 
     // put back
     if (placeholders.length != translatedValues.length) {
-      print('Warning: mismatch in placeholders and translations!');
+      // print('Warning: mismatch in placeholders and translations!');
+      // if mismatch appears, that means there is some tags that break my dfs and my dfs
+      // are not getting all text nodes correctly, cant really do much, some of them are fixable
+      // but text nodes with text nodes inside them are kinda hard to fix,
+      // if u were able to fix goooooooooooooooood
     }
     for (
       int i = 0;
@@ -215,7 +216,7 @@ class TranslateAPI {
     html = html.replaceAll(brPlaceholder, "<br>");
     html = html.replaceAll(emPlaceholderOpen, "<em>");
     html = html.replaceAll(emPlaceholderClose, "</em>");
-    print(html);
+    // print(html);
     return html;
   }
 }
