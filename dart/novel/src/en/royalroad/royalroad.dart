@@ -167,11 +167,8 @@ class TranslateAPI {
   ) async {
     // remove dumb stuff
     String brPlaceholder = "-!!-!!-";
-    String emPlaceholderOpen = "-!-!-!-";
-    String emPlaceholderClose = "!-!-!-!";
     html = html.replaceAll(RegExp("<br/?>"), brPlaceholder);
-    html = html.replaceAll(RegExp("<em>"), emPlaceholderOpen);
-    html = html.replaceAll(RegExp("</em>"), emPlaceholderClose);
+    html = html.replaceAll(RegExp("</?em>"), "");
 
     html = html.replaceAll("&nbsp;", "");
     html = html.replaceAll("&amp;", "&");
@@ -214,8 +211,6 @@ class TranslateAPI {
       html = html.replaceFirst(placeholders[i], translatedValues[i]);
     }
     html = html.replaceAll(brPlaceholder, "<br>");
-    html = html.replaceAll(emPlaceholderOpen, "<em>");
-    html = html.replaceAll(emPlaceholderClose, "</em>");
     // print(html);
     return html;
   }
