@@ -483,14 +483,12 @@ class RoyalRoadSource extends MProvider {
       RegExp(r"<table.*?>|</table>|<tr.*?>|</tr>|<td.*?>|</td>"),
       "",
     );
-    // return " " + html; // idk for some reason the reader cuts first char
-    String translatedHtml = "";
-    translatedHtml = await TranslateAPI.translateHtml(
+    html = await TranslateAPI.translateHtml(
       html,
       this.preferenceLanguage.toLowerCase(),
       "en",
     );
-    return " " + translatedHtml;
+    return " " + html + " ";
   }
 
   // For anime episode video list

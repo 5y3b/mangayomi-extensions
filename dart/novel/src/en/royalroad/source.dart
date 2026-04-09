@@ -1,7 +1,7 @@
 import '../../../../../model/source.dart';
 
 Source get royalroadSource => _royalroadSource;
-const _royalroadVersion = "0.0.1";
+const _royalroadVersion = "0.0.2";
 const _royalroadSourceCodeUrl =
     "https://raw.githubusercontent.com/m2k3a/mangayomi-extensions/$branchName/dart/novel/src/en/royalroad/royalroad.dart";
 const _royalroadIconUrl =
