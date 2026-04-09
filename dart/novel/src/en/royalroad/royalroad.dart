@@ -141,16 +141,18 @@ class TranslateAPI {
     return translated;
   }
 
+  /// splits texts and makes multiple requests if text is too long
   static Future<String> translateLong(
     String text, [
     String targetLang = 'en',
     String sourceLang = 'en',
   ]) async {
+    if (sourceLang == targetLang) return text;
     if (text.length < textLengthMax) {
       return await translate(text, targetLang, sourceLang);
     }
     List<String> dd = [];
-    List<String> parts = Utils.smartSplit(text, textLengthMax);
+    List<String> parts = _smartSplit(text, textLengthMax);
 
     for (String part in parts) {
       String translated = await translate(part, targetLang, sourceLang);
@@ -160,12 +162,14 @@ class TranslateAPI {
     return dd.join("");
   }
 
+  /// translates html content while trying to preserve tags, \
+  /// it replaces text with placeholders and then puts them back after translation
   static Future<String> translateHtml(
-    String html,
-    String targetLang,
-    String sourceLang,
-  ) async {
-    // remove dumb stuff
+    String html, [
+    String targetLang = 'en',
+    String sourceLang = 'en',
+  ]) async {
+    if (sourceLang == targetLang) return html;
     String brPlaceholder = "-!!-!!-";
     html = html.replaceAll(RegExp("<br/?>"), brPlaceholder);
     html = html.replaceAll(RegExp("</?em>"), "");
@@ -173,7 +177,7 @@ class TranslateAPI {
     html = html.replaceAll("&nbsp;", "");
     html = html.replaceAll("&amp;", "&");
     MDocument doc = parseHtml(html);
-    List<MElement> leafs = Utils.getLeafElements(doc.body!);
+    List<MElement> leafs = _getLeafElements(doc.body!);
     List<String> placeholders = [];
     List<String> values = [];
 
@@ -214,22 +218,16 @@ class TranslateAPI {
     // print(html);
     return html;
   }
-}
 
-class Utils {
-  static List<MElement> getLeafElements(MElement root) {
+  static List<MElement> _getLeafElements(MElement root) {
     List<MElement> result = [];
-
     void dfs(MElement el) {
       final children = el.children ?? [];
-
       if (children.isEmpty ||
           children.every((child) => child.text?.trim().isEmpty ?? true)) {
         result.add(el);
       } else {
-        for (var child in children) {
-          dfs(child);
-        }
+        for (var child in children) dfs(child);
       }
     }
 
@@ -237,7 +235,7 @@ class Utils {
     return result;
   }
 
-  static List<String> smartSplit(String text, int i) {
+  static List<String> _smartSplit(String text, int i) {
     List<String> parts = [];
     int start = 0;
     while (start < text.length) {
