@@ -133,8 +133,8 @@ class Queries {
     bool isManga = true,
     bool allowAdult = false,
     bool allowUnknown = false,
-    String translationType = "sub", // "sub", "dub"
-    String countryOrigin = "ALL", // "JP", "KR", "CN", "ALL"
+    String? translationType, // "sub", "dub"
+    String? countryOrigin, // "JP", "KR", "CN", "ALL"
   }) {
     return {
       "query": searchQuery,
@@ -150,8 +150,8 @@ class Queries {
         },
         "size": size,
         "page": page,
-        "translationType": translationType,
-        "countryOrigin": countryOrigin,
+        "translationType": translationType ?? "sub",
+        "countryOrigin": countryOrigin ?? "ALL",
       },
     };
   }
@@ -316,6 +316,57 @@ class URLS {
   }
 }
 
+class FilterGet {
+  static (List<String>?, List<String>?) getIncludeExcludeGenres(
+    FilterList filterList,
+  ) {
+    List<dynamic> filters = filterList.filters;
+    List<String> includeGenres = [];
+    List<String> excludeGenres = [];
+    for (var filter in filters) {
+      // filter as GroupFilter;
+      if (filter.type == "GenreFilter" && filter.state.isNotEmpty) {
+        for (var tsFilter in filter.state) {
+          // tsFilter as TriStateFilter;
+          if (tsFilter.state == 0) continue;
+          if (tsFilter.state == 1)
+            includeGenres.add(tsFilter.value);
+          else
+            excludeGenres.add(tsFilter.value);
+        }
+      }
+    }
+    return (
+      includeGenres.isEmpty ? null : includeGenres,
+      excludeGenres.isEmpty ? null : excludeGenres,
+    );
+  }
+
+  static String? getSelectedCountry(FilterList filterList) {
+    List<dynamic> filters = filterList.filters;
+    for (var filter in filters) {
+      // filter as SelectFilter;
+      if (filter.type == "CountryFilter") {
+        String option = filter.values[filter.state].value;
+        if (option != "ALL") return option;
+      }
+    }
+    return null;
+  }
+
+  static String? getSelectedSort(FilterList filterList) {
+    List<dynamic> filters = filterList.filters;
+    for (var filter in filters) {
+      // filter as SelectFilter;
+      if (filter.type == "SortFilter") {
+        String option = filter.values[filter.state].value;
+        if (option.isNotEmpty) return option;
+      }
+    }
+    return null;
+  }
+}
+
 class AllManga extends MProvider {
   AllManga({required this.source});
   MSource source;
@@ -348,7 +399,7 @@ class AllManga extends MProvider {
     final items = jsonDecode(
       res.body,
     )?["data"]?["queryPopular"]?["recommendations"];
-    if (items == null || items is! List) return MPages([], false, list: []);
+    if (items == null || items is! List) return MPages([], false);
     for (var item in items) {
       final mangaData = item["anyCard"];
       final thumbnail = mangaData?["thumbnail"];
@@ -362,7 +413,7 @@ class AllManga extends MProvider {
         ),
       );
     }
-    return MPages(mangaList, true, list: []);
+    return MPages(mangaList, true);
   }
 
   @override
@@ -374,7 +425,7 @@ class AllManga extends MProvider {
       body: jsonEncode(Queries.buildSearchQuery(page: page)),
     );
     final items = jsonDecode(res.body)?["data"]?["mangas"]?["edges"];
-    if (items == null || items is! List) return MPages([], false, list: []);
+    if (items == null || items is! List) return MPages([], false);
     for (var mangaData in items) {
       final thumbnail = mangaData["thumbnail"];
       final id = mangaData["_id"];
@@ -387,21 +438,31 @@ class AllManga extends MProvider {
         ),
       );
     }
-    return MPages(mangaList, true, list: []);
+    return MPages(mangaList, true);
   }
 
   @override
   Future<MPages> search(String query, int page, FilterList filterList) async {
     List<MManga> mangaList = [];
+    var (includeGenres, excludeGenres) = FilterGet.getIncludeExcludeGenres(
+      filterList,
+    );
     final res = await client.post(
       Uri.parse(URLS.API_URL),
       headers: this.postHeaders,
       body: jsonEncode(
-        Queries.buildSearchQuery(page: page, query: query.trim()),
+        Queries.buildSearchQuery(
+          page: page,
+          query: query.trim().isEmpty ? null : query.trim(),
+          genres: includeGenres,
+          excludeGenres: excludeGenres,
+          countryOrigin: FilterGet.getSelectedCountry(filterList),
+          sortedBy: FilterGet.getSelectedSort(filterList),
+        ),
       ),
     );
     final items = jsonDecode(res.body)?["data"]?["mangas"]?["edges"];
-    if (items == null || items is! List) return MPages([], false, list: []);
+    if (items == null || items is! List) return MPages([], false);
     for (var mangaData in items) {
       final thumbnail = mangaData?["thumbnail"];
       final id = mangaData?["_id"];
@@ -414,7 +475,7 @@ class AllManga extends MProvider {
         ),
       );
     }
-    return MPages(mangaList, true, list: []);
+    return MPages(mangaList, true);
   }
 
   @override
@@ -474,24 +535,6 @@ class AllManga extends MProvider {
     );
   }
 
-  // For novel html content
-  @override
-  Future<String> getHtmlContent(String name, String url) async {
-    return "";
-  }
-
-  // Clean html up for reader
-  @override
-  Future<String> cleanHtmlContent(String html) async {
-    return "";
-  }
-
-  // For anime episode video list
-  @override
-  Future<List<MVideo>> getVideoList(String url) async {
-    return [];
-  }
-
   // For manga chapter pages
   @override
   Future<List<dynamic>> getPageList(String url) async {
@@ -534,7 +577,89 @@ class AllManga extends MProvider {
   @override
   List<dynamic> getFilterList() {
     // TODO
-    return [];
+    return [
+      GroupFilter("GenreFilter", "Genre", [
+        TriStateFilter("4 Koma", "4 Koma"),
+        TriStateFilter("Action", "Action"),
+        TriStateFilter("Adult", "Adult"),
+        TriStateFilter("Adventure", "Adventure"),
+        TriStateFilter("Cars", "Cars"),
+        TriStateFilter("Comedy", "Comedy"),
+        TriStateFilter("Cooking", "Cooking"),
+        TriStateFilter("Crossdressing", "Crossdressing"),
+        TriStateFilter("Dementia", "Dementia"),
+        TriStateFilter("Demons", "Demons"),
+        TriStateFilter("Doujinshi", "Doujinshi"),
+        TriStateFilter("Drama", "Drama"),
+        TriStateFilter("Ecchi", "Ecchi"),
+        TriStateFilter("Fantasy", "Fantasy"),
+        TriStateFilter("Game", "Game"),
+        TriStateFilter("Gender Bender", "Gender Bender"),
+        TriStateFilter("Gyaru", "Gyaru"),
+        TriStateFilter("Harem", "Harem"),
+        TriStateFilter("Historical", "Historical"),
+        TriStateFilter("Horror", "Horror"),
+        TriStateFilter("Isekai", "Isekai"),
+        TriStateFilter("Josei", "Josei"),
+        TriStateFilter("Kids", "Kids"),
+        TriStateFilter("Loli", "Loli"),
+        TriStateFilter("Magic", "Magic"),
+        TriStateFilter("Manhua", "Manhua"),
+        TriStateFilter("Manhwa", "Manhwa"),
+        TriStateFilter("Martial Arts", "Martial Arts"),
+        TriStateFilter("Mature", "Mature"),
+        TriStateFilter("Mecha", "Mecha"),
+        TriStateFilter("Medical", "Medical"),
+        TriStateFilter("Military", "Military"),
+        TriStateFilter("Monster Girls", "Monster Girls"),
+        TriStateFilter("Music", "Music"),
+        TriStateFilter("Mystery", "Mystery"),
+        TriStateFilter("One Shot", "One Shot"),
+        TriStateFilter("Parody", "Parody"),
+        TriStateFilter("Police", "Police"),
+        TriStateFilter("Post Apocalyptic", "Post Apocalyptic"),
+        TriStateFilter("Psychological", "Psychological"),
+        TriStateFilter("Reincarnation", "Reincarnation"),
+        TriStateFilter("Reverse Harem", "Reverse Harem"),
+        TriStateFilter("Romance", "Romance"),
+        TriStateFilter("Samurai", "Samurai"),
+        TriStateFilter("School", "School"),
+        TriStateFilter("Sci-Fi", "Sci-Fi"),
+        TriStateFilter("Seinen", "Seinen"),
+        TriStateFilter("Shota", "Shota"),
+        TriStateFilter("Shoujo", "Shoujo"),
+        TriStateFilter("Shoujo Ai", "Shoujo Ai"),
+        TriStateFilter("Shounen", "Shounen"),
+        TriStateFilter("Shounen Ai", "Shounen Ai"),
+        TriStateFilter("Slice of Life", "Slice of Life"),
+        TriStateFilter("Smut", "Smut"),
+        TriStateFilter("Space", "Space"),
+        TriStateFilter("Sports", "Sports"),
+        TriStateFilter("Super Power", "Super Power"),
+        TriStateFilter("Supernatural", "Supernatural"),
+        TriStateFilter("Suspense", "Suspense"),
+        TriStateFilter("Thriller", "Thriller"),
+        TriStateFilter("Tragedy", "Tragedy"),
+        TriStateFilter("Unknown", "Unknown"),
+        TriStateFilter("Vampire", "Vampire"),
+        TriStateFilter("Webtoons", "Webtoons"),
+        TriStateFilter("Yaoi", "Yaoi"),
+        TriStateFilter("Youkai", "Youkai"),
+        TriStateFilter("Yuri", "Yuri"),
+        TriStateFilter("Zombies", "Zombies"),
+      ]),
+      SelectFilter("CountryFilter", "Country", 0, [
+        SelectFilterOption("ALL", "ALL"),
+        SelectFilterOption("Japan", "JP"),
+        SelectFilterOption("China", "CN"),
+        SelectFilterOption("Korea", "KR"),
+      ]),
+      SelectFilter("SortFilter", "Sort by", 0, [
+        SelectFilterOption("Recently Added", ""),
+        SelectFilterOption("Name A-Z", "Name_ASC"),
+        SelectFilterOption("Name Z-A", "Name_DESC"),
+      ]),
+    ];
   }
 
   @override
@@ -569,7 +694,7 @@ Enter your custom user agent string below:""",
 
   String preferenceUserAgent() {
     final String? userAgent = getPreferenceValue(
-      source.id,
+      source.id ?? 0,
       "USERAGENT",
     )?.trim();
     return (userAgent == null || userAgent.isEmpty)
@@ -578,7 +703,7 @@ Enter your custom user agent string below:""",
   }
 
   String preferenceImageQuality() {
-    return getPreferenceValue(source.id, "IMAGEQUALITY");
+    return getPreferenceValue(source.id ?? 0, "IMAGEQUALITY");
   }
 }
 
