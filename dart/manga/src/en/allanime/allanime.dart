@@ -1,4 +1,6 @@
+import 'package:mangayomi/bridge_classes/dart/js_eval_result.dart';
 import 'package:mangayomi/bridge_lib.dart';
+import 'dart:typed_data';
 import 'dart:convert';
 
 class Queries {
@@ -316,6 +318,59 @@ class URLS {
   }
 }
 
+// TODO: this is how it should be done in js, idk how to do it in dart
+/**
+ * async function decryptPayload(b64) {
+  const secret = "P7K2RGbFgauVtmiS".split("").reverse().join(""); // SimtVuagFbGR2K7P
+  const secretBytes = new TextEncoder().encode(secret);
+  const keyHash = await crypto.subtle.digest("SHA-256", secretBytes);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    keyHash,
+    { name: "AES-GCM" },
+    false,
+    ["decrypt"]
+  );
+
+  const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const iv = bytes.slice(0, 12);
+  const ciphertextAndTag = bytes.slice(12);
+
+  const plaintext = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    ciphertextAndTag
+  );
+
+  return JSON.parse(new TextDecoder().decode(plaintext));
+}
+ */
+// TODO: commented this out cuz its not working so far
+// class Decrypt {
+//   static dynamic run(String b64data) {
+//     final secret = "SimtVuagFbGR2K7P";
+//     final parts = splitAllAnimePayload(b64data);
+
+//     final decrypted = cryptoHandler(
+//       parts['cipherText']!,
+//       parts['iv']!,
+//       secret,
+//       false,
+//     );
+
+//     return jsonDecode(decrypted) as Map<String, dynamic>;
+//   }
+
+//   static Map<String, String> splitAllAnimePayload(String payload) {
+//     final raw = base64Decode(payload);
+
+//     final iv = raw.sublist(0, 12);
+//     final cipherText = raw.sublist(12);
+
+//     return {'iv': base64Encode(iv), 'cipherText': base64Encode(cipherText)};
+//   }
+// }
+
 class FilterGet {
   static (List<String>?, List<String>?) getIncludeExcludeGenres(
     FilterList filterList,
@@ -538,12 +593,12 @@ class AllManga extends MProvider {
   // For manga chapter pages
   @override
   Future<List<dynamic>> getPageList(String url) async {
-    final split = url.split("/");
+    List<String> split = url.split("/");
     if (split.length < 3) return [];
     final String mangaId = split[split.length - 2];
-    final chapter = split.last.split("-");
-    final chapterNum = chapter[1];
-    final chapterType = chapter.last;
+    List<String> chapter = split.last.split("-");
+    String chapterNum = chapter[1];
+    String chapterType = chapter.last;
     final res = await client.post(
       Uri.parse(URLS.API_URL),
       headers: this.postHeaders,
@@ -556,8 +611,15 @@ class AllManga extends MProvider {
       ),
     );
     final json = jsonDecode(res.body);
-    final pagesData = json["data"]["chapterPages"]["edges"]?.first;
-    String pictureUrlHead = pagesData["pictureUrlHead"].toString();
+    final b64data = json?["data"]?["tobeparsed"]?.toString();
+    if (b64data == null) throw Exception("Page data not found");
+
+    final pagesData = 0; // Decrypt.run(b64data);
+    // TODO: to see returned data
+    throw Exception("$pagesData");
+    String? pictureUrlHead = pagesData?["pictureUrlHead"]?.toString();
+    if (pagesData == null || pictureUrlHead == null)
+      throw Exception("Pages not found");
     List<dynamic> pageUrls = [];
     for (var page in pagesData["pictureUrls"]) {
       final String pagePath = page["url"].toString();
@@ -576,7 +638,6 @@ class AllManga extends MProvider {
 
   @override
   List<dynamic> getFilterList() {
-    // TODO
     return [
       GroupFilter("GenreFilter", "Genre", [
         TriStateFilter("4 Koma", "4 Koma"),
